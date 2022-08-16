@@ -1,6 +1,6 @@
 Add-Type -Path .\BouncyCastle.dll
 
-$emailConfig = gc .\config.json | ConvertFrom-Json
+$mainConfig = gc .\config.json | ConvertFrom-Json
 $secureRandom = [Org.BouncyCastle.Security.SecureRandom]::new()
 $curve = [Org.BouncyCastle.Asn1.CryptoPro.ECGost3410NamedCurves]::GetByNameX9("Tc26-Gost-3410-12-256-paramSetA")
 $domainParams = [Org.BouncyCastle.Crypto.Parameters.ECDomainParameters]::new(
@@ -81,7 +81,7 @@ $store.SetCertificateEntry(
     [Org.BouncyCastle.Pkcs.X509CertificateEntry]::new($x509)
 )
 $m = [System.IO.MemoryStream]::new()
-$store.Save($m, $emailConfig.pfxPass.ToCharArray(), $secureRandom);
+$store.Save($m, $mainConfig.pfxPass.ToCharArray(), $secureRandom);
 $data = $m.ToArray()
 $pkcs12Bytes = [Org.BouncyCastle.Pkcs.Pkcs12Utilities]::ConvertToDefiniteLength($data)
 [System.IO.File]::WriteAllBytes("pfx.pfx", $pkcs12Bytes)
