@@ -1,8 +1,8 @@
-How to use:__
-send http request:__
-your ip (i.e. localhost or 127.0.0.1)/token=aaa&email=bbb&timestamp=ccc__
+How to use:\
+send http request:\
+your ip (i.e. localhost or 127.0.0.1)/token=aaa&email=bbb&timestamp=ccc\
 
-Config__
+Config\
 {
     "email":"your email here",
     "password":"email pass",
