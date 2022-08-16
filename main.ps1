@@ -102,7 +102,7 @@ while ($tokenGiverHttpListener.IsListening) {
                         $mustContainParams.Add("timestamp", "")
                         if ([System.Linq.Enumerable]::SequenceEqual($mustContainParams.AllKeys, [System.Linq.Enumerable]::Intersect($mustContainParams.AllKeys, $query.AllKeys))) {
                             $signature = Sign-TimeStamp -query $query
-                            "Token send OK!" | Send-HttpResponse -context $context
+                            "Token sent. OK!" | Send-HttpResponse -context $context
                             Send-MailMessage `
                                 -SmtpServer $mainConfig.SmtpServer `
                                 -From $mainConfig.email `
