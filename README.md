@@ -11,5 +11,5 @@ Config\
     "password":"email pass",\
     "SmtpServer":"smtp server",\
     "pfxPass":"pfx password",\
-    "applicationToken":"app token"
+    "applicationToken":"app token"\
 }
