@@ -1,5 +1,5 @@
 Add-Type -Path .\BouncyCastle.dll
-###
+####
 $secureRandom = [Org.BouncyCastle.Security.SecureRandom]::new()
 $curve = [Org.BouncyCastle.Asn1.CryptoPro.ECGost3410NamedCurves]::GetByNameX9("Tc26-Gost-3410-12-256-paramSetA")
 $domainParams = [Org.BouncyCastle.Crypto.Parameters.ECDomainParameters]::new(
