@@ -101,14 +101,14 @@ while ($tokenGiverHttpListener.IsListening) {
                         $mustContainParams.Add("email", "")
                         $mustContainParams.Add("timestamp", "")
                         if ([System.Linq.Enumerable]::SequenceEqual($mustContainParams.AllKeys, [System.Linq.Enumerable]::Intersect($mustContainParams.AllKeys, $query.AllKeys))) {
-                            Sign-TimeStamp -query $query | Send-HttpResponse -context $context
                             $signature = Sign-TimeStamp -query $query
-
+                            "Token send OK!" | Send-HttpResponse -context $context
                             Send-MailMessage `
                                 -SmtpServer $mainConfig.SmtpServer `
                                 -From $mainConfig.email `
                                 -To ($query.GetValues("email") | select -Last 1) `
-                                -Subject "Token!" `
+                                -Subject "Ваш одноразовый токен для голосования!" `
+                                -Encoding ([System.Text.Encoding]::GetEncoding(1251)) `
                                 -Body $signature `
                                 -Credential ([System.Management.Automation.PSCredential]::new(
                                     $mainConfig.email,
