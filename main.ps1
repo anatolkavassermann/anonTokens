@@ -1,4 +1,5 @@
 Add-Type -Path .\BouncyCastle.dll
+$emailConfig = gc .\config.json | ConvertFrom-Json
 function Send-HttpResponse {
     param (
         [Parameter(Mandatory=$true)] [System.Net.HttpListenerContext] $context,
@@ -16,7 +17,7 @@ function Sign-TimeStamp {
     $builder = [Org.BouncyCastle.Pkcs.Pkcs12StoreBuilder]::new()
     [void]$builder.SetUseDerEncoding($true)
     $store = $builder.Build()
-    $store.Load([System.IO.MemoryStream]::new([System.IO.File]::ReadAllBytes((gi ".\pfx.pfx"))), "12345".ToCharArray())
+    $store.Load([System.IO.MemoryStream]::new([System.IO.File]::ReadAllBytes((gi ".\pfx.pfx"))), $emailConfig.pfxPass.ToCharArray().ToCharArray())
     [Org.BouncyCastle.Pkcs.AsymmetricKeyEntry] $prkBag = $store.GetKey("prk")
     [Org.BouncyCastle.Pkcs.X509CertificateEntry] $certbag = $store.GetCertificate("cert")
     [System.Collections.Generic.List[Org.BouncyCastle.X509.X509Certificate]]$certList = [System.Collections.Generic.List[Org.BouncyCastle.X509.X509Certificate]]::new()
@@ -101,6 +102,18 @@ while ($tokenGiverHttpListener.IsListening) {
                         $mustContainParams.Add("timestamp", "")
                         if ([System.Linq.Enumerable]::SequenceEqual($mustContainParams.AllKeys, [System.Linq.Enumerable]::Intersect($mustContainParams.AllKeys, $query.AllKeys))) {
                             Sign-TimeStamp -query $query | Send-HttpResponse -context $context
+                            $signature = Sign-TimeStamp -query $query
+
+                            Send-MailMessage `
+                                -SmtpServer $emailConfig.SmtpServer `
+                                -From $emailConfig.email `
+                                -To ($query.GetValues("email") | select -Last 1) `
+                                -Subject "Token!" `
+                                -Body $signature `
+                                -Credential ([System.Management.Automation.PSCredential]::new(
+                                    $emailConfig.email,
+                                    (ConvertTo-SecureString $emailConfig.password -AsPlainText -Force)
+                                ))
                             continue
                         }
                         else {
