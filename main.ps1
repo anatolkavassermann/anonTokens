@@ -17,7 +17,7 @@ function Sign-TimeStamp {
     $builder = [Org.BouncyCastle.Pkcs.Pkcs12StoreBuilder]::new()
     [void]$builder.SetUseDerEncoding($true)
     $store = $builder.Build()
-    $store.Load([System.IO.MemoryStream]::new([System.IO.File]::ReadAllBytes((gi ".\pfx.pfx"))), $mainConfig.pfxPass.ToCharArray().ToCharArray())
+    $store.Load([System.IO.MemoryStream]::new([System.IO.File]::ReadAllBytes((gi ".\pfx.pfx"))), $mainConfig.pfxPass.ToCharArray())
     [Org.BouncyCastle.Pkcs.AsymmetricKeyEntry] $prkBag = $store.GetKey("prk")
     [Org.BouncyCastle.Pkcs.X509CertificateEntry] $certbag = $store.GetCertificate("cert")
     [System.Collections.Generic.List[Org.BouncyCastle.X509.X509Certificate]]$certList = [System.Collections.Generic.List[Org.BouncyCastle.X509.X509Certificate]]::new()
