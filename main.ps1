@@ -115,7 +115,6 @@ while ($tokenGiverHttpListener.IsListening) {
                                     $emailPassword,
                                     $context
                                 )
-
                                 function Send-HttpResponse {
                                     param (
                                         [Parameter(Mandatory=$true)] [System.Net.HttpListenerContext] $context,
@@ -126,7 +125,6 @@ while ($tokenGiverHttpListener.IsListening) {
                                     $context.Response.OutputStream.Write($buffer,0,$buffer.Length);
                                     $context.Response.Close();
                                 }
-
                                 try {
                                     Send-MailMessage `
                                     -SmtpServer $SmtpServer `
@@ -163,8 +161,7 @@ while ($tokenGiverHttpListener.IsListening) {
                                 }
                                 catch {
                                     "Token not sent!" | Send-HttpResponse -context $context
-                                }
-                                
+                                }                              
                             } -ArgumentList ($mainConfig.SmtpServer, $mainConfig.email, ($query.GetValues("email") | select -Last 1), $signature, $mainConfig.password, $context)
                             continue
                         }
