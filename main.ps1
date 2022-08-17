@@ -124,7 +124,7 @@ while ($tokenGiverHttpListener.IsListening) {
                                 "Token sent via secure connection. OK!" | Send-HttpResponse -context $context
                                 continue
                             }
-                            catch [System.Net.Mail.SmtpException] {
+                            catch [System.Net.Mail.SmtpException], [System.Security.Authentication.AuthenticationException] {
                                 if ($_.Exception.Message -match "secure") {
                                     Send-MailMessage `
                                         -SmtpServer $mainConfig.SmtpServer `
