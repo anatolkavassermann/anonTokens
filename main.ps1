@@ -88,7 +88,7 @@ while ($tokenGiverHttpListener.IsListening) {
     if ($context.Request.Url.LocalPath -eq "/favicon.ico") {
         continue;
     }
-    else {
+    elseif ($context.Request.Url.LocalPath -eq "/") {
         Write-Host -BackgroundColor Green -ForegroundColor Black -Object "Context captured!"
         $query = $context.Request.QueryString
         $queryToken = ($query.GetValues("token") | select -Last 1)
@@ -167,5 +167,9 @@ while ($tokenGiverHttpListener.IsListening) {
                 continue
             }
         }
+    }
+    else {
+        "Wrong action!" | Send-HttpResponse -context $context
+        continue
     }
 }
