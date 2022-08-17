@@ -12,14 +12,10 @@ function Send-HttpResponse {
 }
 function Sign-TimeStamp {
     param (
-        $query
+        $query,
+        $prkBag,
+        $certbag
     )
-    $builder = [Org.BouncyCastle.Pkcs.Pkcs12StoreBuilder]::new()
-    [void]$builder.SetUseDerEncoding($true)
-    $store = $builder.Build()
-    $store.Load([System.IO.MemoryStream]::new([System.IO.File]::ReadAllBytes((gi ".\pfx.pfx"))), $mainConfig.pfxPass.ToCharArray())
-    [Org.BouncyCastle.Pkcs.AsymmetricKeyEntry] $prkBag = $store.GetKey("prk")
-    [Org.BouncyCastle.Pkcs.X509CertificateEntry] $certbag = $store.GetCertificate("cert")
     [System.Collections.Generic.List[Org.BouncyCastle.X509.X509Certificate]]$certList = [System.Collections.Generic.List[Org.BouncyCastle.X509.X509Certificate]]::new()
     $certList.Add($certbag.Certificate)
     $storeParams = [Org.BouncyCastle.X509.Store.X509CollectionStoreParameters]::new($certList)
@@ -76,6 +72,14 @@ function Sign-TimeStamp {
     [System.Convert]::ToBase64String($attachedCms.GetEncoded("DER")) | sv -Name "SigB64"
     return $SigB64
 }
+
+$builder = [Org.BouncyCastle.Pkcs.Pkcs12StoreBuilder]::new()
+[void]$builder.SetUseDerEncoding($true)
+$store = $builder.Build()
+$store.Load([System.IO.MemoryStream]::new([System.IO.File]::ReadAllBytes((gi ".\pfx.pfx"))), $mainConfig.pfxPass.ToCharArray())
+[Org.BouncyCastle.Pkcs.AsymmetricKeyEntry] $prkBag = $store.GetKey("prk")
+[Org.BouncyCastle.Pkcs.X509CertificateEntry] $certbag = $store.GetCertificate("cert")
+
 $mustContainParams = [System.Collections.Specialized.NameValueCollection]::new();
 $tokenGiverHttpListener = [System.Net.HttpListener]::new()
 $tokenGiverHttpListener | % { $_.Prefixes.Add("http://127.0.0.1:11001/"); $_.Start() }
@@ -101,19 +105,53 @@ while ($tokenGiverHttpListener.IsListening) {
                         $mustContainParams.Add("email", "")
                         $mustContainParams.Add("timestamp", "")
                         if ([System.Linq.Enumerable]::SequenceEqual($mustContainParams.AllKeys, [System.Linq.Enumerable]::Intersect($mustContainParams.AllKeys, $query.AllKeys))) {
-                            $signature = Sign-TimeStamp -query $query
-                            "Token sent. OK!" | Send-HttpResponse -context $context
-                            Send-MailMessage `
-                                -SmtpServer $mainConfig.SmtpServer `
-                                -From $mainConfig.email `
-                                -To ($query.GetValues("email") | select -Last 1) `
-                                -Subject "Ваш одноразовый токен для голосования!" `
-                                -Encoding ([System.Text.Encoding]::GetEncoding(1251)) `
-                                -Body $signature `
-                                -Credential ([System.Management.Automation.PSCredential]::new(
-                                    $mainConfig.email,
-                                    (ConvertTo-SecureString $mainConfig.password -AsPlainText -Force)
-                                ))
+                            $signature = Sign-TimeStamp -query $query -prkBag $prkBag -certbag $certbag
+                            try {
+                                Send-MailMessage `
+                                    -SmtpServer $mainConfig.SmtpServer `
+                                    -From $mainConfig.email `
+                                    -To ($query.GetValues("email") | select -Last 1) `
+                                    -Subject "Ваш одноразовый токен для голосования!" `
+                                    -Encoding ([System.Text.Encoding]::GetEncoding(1251)) `
+                                    -Body $signature `
+                                    -Credential ([System.Management.Automation.PSCredential]::new(
+                                        $mainConfig.email,
+                                        (ConvertTo-SecureString $mainConfig.password -AsPlainText -Force)
+                                    )) `
+                                    -UseSsl:$true `
+                                    -ErrorAction:Stop `
+                                    -InformationAction:SilentlyContinue
+                                "Token sent via secure connection. OK!" | Send-HttpResponse -context $context
+                                continue
+                            }
+                            catch [System.Net.Mail.SmtpException] {
+                                if ($_.Exception.Message -match "secure") {
+                                    Send-MailMessage `
+                                        -SmtpServer $mainConfig.SmtpServer `
+                                        -From $mainConfig.email `
+                                        -To ($query.GetValues("email") | select -Last 1) `
+                                        -Subject "Ваш одноразовый токен для голосования!" `
+                                        -Encoding ([System.Text.Encoding]::GetEncoding(1251)) `
+                                        -Body $signature `
+                                        -Credential ([System.Management.Automation.PSCredential]::new(
+                                            $mainConfig.email,
+                                            (ConvertTo-SecureString $mainConfig.password -AsPlainText -Force)
+                                        )) `
+                                        -UseSsl:$false `
+                                        -ErrorAction:Stop `
+                                        -InformationAction:SilentlyContinue
+                                    "Token sent via insecure connection. OK!" | Send-HttpResponse -context $context
+                                    continue
+                                }
+                                else {
+                                    "Token not sent!" | Send-HttpResponse -context $context
+                                    continue
+                                }
+                            }
+                            catch {
+                                "Token not sent!" | Send-HttpResponse -context $context
+                                continue
+                            }
                             continue
                         }
                         else {
