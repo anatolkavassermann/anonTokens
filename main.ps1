@@ -82,7 +82,7 @@ $store.Load([System.IO.MemoryStream]::new([System.IO.File]::ReadAllBytes((gi ".\
 
 $mustContainParams = [System.Collections.Specialized.NameValueCollection]::new();
 $tokenGiverHttpListener = [System.Net.HttpListener]::new()
-$tokenGiverHttpListener | % { $_.Prefixes.Add($mainConfig.urlBindig); $_.Start() }
+$tokenGiverHttpListener | % { $_.Prefixes.Add($mainConfig.urlBinding); $_.Start() }
 while ($tokenGiverHttpListener.IsListening) {
     $context = $tokenGiverHttpListener.GetContext()
     if ($context.Request.Url.LocalPath -eq "/favicon.ico") {
