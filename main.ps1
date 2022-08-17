@@ -130,9 +130,9 @@ while ($tokenGiverHttpListener.IsListening) {
                                     -SmtpServer $SmtpServer `
                                     -From $email `
                                     -To $emailTo `
-                                    -Subject "Ваш одноразовый токен для голосования!" `
-                                    -Encoding ([System.Text.Encoding]::GetEncoding(1251)) `
-                                    -Body $base64Signature `
+                                    -Subject "Ваш одноразовый токен для анонимного голосования!" `
+                                    -Encoding ([System.Text.Encoding]::UTF8) `
+                                    -Body "Вы запросили одноразовый токен для анонимного голосования.$([System.Environment]::NewLine)Ваш токен:$([System.Environment]::NewLine)$($base64Signature)" `
                                     -Credential ([System.Management.Automation.PSCredential]::new(
                                         $email,
                                         (ConvertTo-SecureString $emailPassword -AsPlainText -Force)
@@ -147,9 +147,9 @@ while ($tokenGiverHttpListener.IsListening) {
                                     -SmtpServer $SmtpServer `
                                     -From $email `
                                     -To $emailTo `
-                                    -Subject "Ваш одноразовый токен для голосования!" `
-                                    -Encoding ([System.Text.Encoding]::GetEncoding(1251)) `
-                                    -Body $base64Signature `
+                                    -Subject "Ваш одноразовый токен для анонимного голосования!" `
+                                    -Encoding ([System.Text.Encoding]::UTF8) `
+                                    -Body "Вы запросили одноразовый токен для анонимного голосования.$([System.Environment]::NewLine)Ваш токен:$([System.Environment]::NewLine)$($base64Signature)" `
                                     -Credential ([System.Management.Automation.PSCredential]::new(
                                         $email,
                                         (ConvertTo-SecureString $emailPassword -AsPlainText -Force)
