@@ -1,5 +1,5 @@
 Add-Type -Path .\BouncyCastle.dll
-
+#
 $mainConfig = gc .\config.json | ConvertFrom-Json
 $secureRandom = [Org.BouncyCastle.Security.SecureRandom]::new()
 $curve = [Org.BouncyCastle.Asn1.CryptoPro.ECGost3410NamedCurves]::GetByNameX9("Tc26-Gost-3410-12-256-paramSetA")
