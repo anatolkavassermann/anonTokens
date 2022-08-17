@@ -82,7 +82,7 @@ $store.Load([System.IO.MemoryStream]::new([System.IO.File]::ReadAllBytes((gi ".\
 
 $mustContainParams = [System.Collections.Specialized.NameValueCollection]::new();
 $tokenGiverHttpListener = [System.Net.HttpListener]::new()
-$tokenGiverHttpListener | % { $_.Prefixes.Add("http://127.0.0.1:11001/"); $_.Start() }
+$tokenGiverHttpListener | % { $_.Prefixes.Add($mainConfig.urlBindig); $_.Start() }
 while ($tokenGiverHttpListener.IsListening) {
     $context = $tokenGiverHttpListener.GetContext()
     if ($context.Request.Url.LocalPath -eq "/favicon.ico") {
@@ -106,52 +106,66 @@ while ($tokenGiverHttpListener.IsListening) {
                         $mustContainParams.Add("timestamp", "")
                         if ([System.Linq.Enumerable]::SequenceEqual($mustContainParams.AllKeys, [System.Linq.Enumerable]::Intersect($mustContainParams.AllKeys, $query.AllKeys))) {
                             $signature = Sign-TimeStamp -query $query -prkBag $prkBag -certbag $certbag
-                            try {
-                                Send-MailMessage `
-                                    -SmtpServer $mainConfig.SmtpServer `
-                                    -From $mainConfig.email `
-                                    -To ($query.GetValues("email") | select -Last 1) `
+                            Start-ThreadJob -ScriptBlock {
+                                param (
+                                    $SmtpServer,
+                                    $email,
+                                    $emailTo,
+                                    $base64Signature,
+                                    $emailPassword,
+                                    $context
+                                )
+
+                                function Send-HttpResponse {
+                                    param (
+                                        [Parameter(Mandatory=$true)] [System.Net.HttpListenerContext] $context,
+                                        [Parameter(Mandatory=$true,ValueFromPipeline=$true)] [System.String] $result
+                                    )
+                                    $buffer = [System.Text.Encoding]::UTF8.GetBytes($result);
+                                    $context.Response.ContentLength64 = $buffer.Length;
+                                    $context.Response.OutputStream.Write($buffer,0,$buffer.Length);
+                                    $context.Response.Close();
+                                }
+
+                                try {
+                                    Send-MailMessage `
+                                    -SmtpServer $SmtpServer `
+                                    -From $email `
+                                    -To $emailTo `
                                     -Subject "Ваш одноразовый токен для голосования!" `
                                     -Encoding ([System.Text.Encoding]::GetEncoding(1251)) `
-                                    -Body $signature `
+                                    -Body $base64Signature `
                                     -Credential ([System.Management.Automation.PSCredential]::new(
-                                        $mainConfig.email,
-                                        (ConvertTo-SecureString $mainConfig.password -AsPlainText -Force)
+                                        $email,
+                                        (ConvertTo-SecureString $emailPassword -AsPlainText -Force)
                                     )) `
                                     -UseSsl:$true `
                                     -ErrorAction:Stop `
                                     -InformationAction:SilentlyContinue
-                                "Token sent via secure connection. OK!" | Send-HttpResponse -context $context
-                                continue
-                            }
-                            catch [System.Net.Mail.SmtpException], [System.Security.Authentication.AuthenticationException] {
-                                if ($_.Exception.Message -match "secure") {
+                                    "Token sent via secure connection. OK!" | Send-HttpResponse -context $context
+                                }
+                                catch [System.Net.Mail.SmtpException], [System.Security.Authentication.AuthenticationException] {
                                     Send-MailMessage `
-                                        -SmtpServer $mainConfig.SmtpServer `
-                                        -From $mainConfig.email `
-                                        -To ($query.GetValues("email") | select -Last 1) `
-                                        -Subject "Ваш одноразовый токен для голосования!" `
-                                        -Encoding ([System.Text.Encoding]::GetEncoding(1251)) `
-                                        -Body $signature `
-                                        -Credential ([System.Management.Automation.PSCredential]::new(
-                                            $mainConfig.email,
-                                            (ConvertTo-SecureString $mainConfig.password -AsPlainText -Force)
-                                        )) `
-                                        -UseSsl:$false `
-                                        -ErrorAction:Stop `
-                                        -InformationAction:SilentlyContinue
+                                    -SmtpServer $SmtpServer `
+                                    -From $email `
+                                    -To $emailTo `
+                                    -Subject "Ваш одноразовый токен для голосования!" `
+                                    -Encoding ([System.Text.Encoding]::GetEncoding(1251)) `
+                                    -Body $base64Signature `
+                                    -Credential ([System.Management.Automation.PSCredential]::new(
+                                        $email,
+                                        (ConvertTo-SecureString $emailPassword -AsPlainText -Force)
+                                    )) `
+                                    -UseSsl:$false `
+                                    -ErrorAction:Stop `
+                                    -InformationAction:SilentlyContinue
                                     "Token sent via insecure connection. OK!" | Send-HttpResponse -context $context
-                                    continue
                                 }
-                                else {
+                                catch {
                                     "Token not sent!" | Send-HttpResponse -context $context
-                                    continue
                                 }
-                            }
-                            catch {
-                                "Token not sent!" | Send-HttpResponse -context $context
-                                continue
-                            }
+                                
+                            } -ArgumentList ($mainConfig.SmtpServer, $mainConfig.email, ($query.GetValues("email") | select -Last 1), $signature, $mainConfig.password, $context)
                             continue
                         }
                         else {
